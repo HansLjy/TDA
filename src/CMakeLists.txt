@@ -1,21 +1,16 @@
 cmake_minimum_required(VERSION 3.22)
 
-add_library(LocalCircularCoordinate INTERFACE)
+include(dependencies.cmake)
 
-target_include_directories(LocalCircularCoordinate INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+file(GLOB TDA_SRC *.cc)
 
-find_package(Eigen3 3.4.0 EXACT REQUIRED)
-find_package(spdlog REQUIRED)
+add_library(TDA ${TDA_SRC})
 
-target_link_libraries(LocalCircularCoordinate INTERFACE Eigen3::Eigen)
-target_link_libraries(LocalCircularCoordinate INTERFACE spdlog::spdlog)
+target_link_libraries(TDA PUBLIC Renderer)
+target_link_libraries(TDA PUBLIC GUI)
 
-find_package(CGAL QUIET REQUIRED COMPONENTS Core)
-if (CGAL_VERSION VERSION_LESS 4.11.0)
-    message(FATAL_ERROR "CGAL is considered too old to be used by Gudhi. Must be > 4.11.")
-endif()
+target_include_directories(TDA PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_include_directories(TDA PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+target_link_libraries(TDA PUBLIC tda_compile_flags)
 
-target_link_libraries(LocalCircularCoordinate INTERFACE CGAL::CGAL CGAL::CGAL_Core)
-
-find_package(GUDHI 2.0.0 REQUIRED)
-target_include_directories(LocalCircularCoordinate INTERFACE ${GUDHI_INCLUDE_DIRS})
+target_link_libraries(TDA PUBLIC TDADependencies)

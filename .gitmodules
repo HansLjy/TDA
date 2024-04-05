@@ -1,0 +1,3 @@
+[submodule "3rdParty/Renderer"]
+	path = 3rdParty/Renderer
+	url = git@github.com:HansLjy/Renderer.git
