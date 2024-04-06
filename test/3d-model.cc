@@ -57,9 +57,8 @@ int main(int argc, char* argv[]) {
 
     if (circular_coords.has_value()) {
         auto& hues = circular_coords.value()[0];
-        assert(hues.size() == num_vertices);
         for (int i = 0; i < num_vertices; i++) {
-            colors.row(i) = TDA::HSV2RGB(std::fmod(hues[i], 1.0), 1.0, 1.0);
+            colors.row(i) = TDA::HSV2RGB(hues[i] - std::floor(hues[i]), 1.0, 1.0);
         }
     }
     std::cerr << colors;

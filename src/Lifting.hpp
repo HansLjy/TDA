@@ -59,67 +59,41 @@ inline std::vector<double> LiftingToR(
     const Filtration& filtration,
     const std::vector<int>& coefs
 ) {
-    Eigen::SparseMatrix<double> d0;
-    std::vector<Eigen::Triplet<double>> coo;
+	const int num_vertices = filtration._num_vertices;
+	const int num_edges = filtration._num_edges;
 
-    int simplex_id = 0;
+    Eigen::SparseMatrix<double> d0(num_edges, num_vertices);
+    Eigen::VectorXd b(num_edges);
+
+	int simplex_id = 0;
+	int edge_id = 0;
+    std::vector<Eigen::Triplet<double>> coo;
     for (const auto& simplex : filtration._simplices) {
         if (simplex._dim == 1) {
             coo.push_back(Eigen::Triplet<double>(
-                simplex_id, simplex._faces[1], 1
+                edge_id, simplex._faces[0], 1
             ));
             coo.push_back(Eigen::Triplet<double>(
-                simplex_id, simplex._faces[0], -1
+                edge_id, simplex._faces[1], -1
             ));
+			b(edge_id) = coefs[simplex_id];
+			edge_id++;
         }
-        simplex_id++;
+		simplex_id++;
     }
+	d0.setFromTriplets(coo.begin(), coo.end());
 
-    Eigen::SparseMatrix<double> A = d0.transpose() * d0;
-    Eigen::VectorXd coefs_eigen(coefs.size());
-    for (int i = 0; i < coefs.size(); i++) {
-        coefs_eigen(i) = coefs[i];
-    }
-
-    Eigen::VectorXd b = - d0.transpose() * coefs_eigen;
     Eigen::SparseQR<Eigen::SparseMatrix<double>, Eigen::COLAMDOrdering<int>> solver;
-    solver.compute(A);
+    solver.compute(d0);
+
     Eigen::VectorXd f = solver.solve(b);
 
     std::vector<double> result;
-    result.reserve(coefs.size());
-    for (int i = 0; i < coefs.size(); i++) {
+    result.reserve(num_vertices);
+    for (int i = 0; i < num_vertices; i++) {
         result.push_back(f(i));
     }
     return result;
-}
-
-inline void LiftingToR(
-    Gudhi::Simplex_tree<>& simplex_tree,
-    const Eigen::VectorXd& alpha,
-    Eigen::VectorXd& f
-) {
-    Eigen::SparseMatrix<double> d0;
-    std::vector<Eigen::Triplet<double>> coo;
-    for (auto edge : simplex_tree.skeleton_simplex_range(1)) {
-        int edge_index = simplex_tree.key(edge);
-        // loop through all edges
-        double coef = -1;
-        for (auto vertex : simplex_tree.boundary_simplex_range(edge)) {
-            int vertex_index = simplex_tree.key(vertex);
-            coo.push_back(
-                Eigen::Triplet<double>(
-                    edge_index, vertex_index, coef
-                )
-            );
-            coef = -coef;
-        }
-    }
-    Eigen::SparseMatrix<double> A = d0.transpose() * d0;
-    Eigen::VectorXd b = - d0.transpose() * alpha;
-    Eigen::SparseQR<Eigen::SparseMatrix<double>, Eigen::COLAMDOrdering<int>> solver;
-    solver.compute(A);
-    f = solver.solve(b);
 }
 
 }

@@ -16,6 +16,10 @@ struct Simplex {
 };
 
 struct Filtration {
+	int _num_vertices = 0;
+	int _num_edges = 0;
+	int _num_faces = 0;
+
     std::vector<Simplex> _simplices;
     std::vector<double> _diameters;
 };
@@ -79,13 +83,31 @@ Filtration GenerateFiltration(
         for (auto face_simplex_handle : simplex_tree.boundary_simplex_range(simplex_handle)) {
             simplex._faces.push_back(simplex_tree.key(face_simplex_handle));
         }
-        std::reverse(simplex._faces.begin(), simplex._faces.end());
+		std::reverse(simplex._faces.begin(), simplex._faces.end());
         for (auto vertex_id : simplex_tree.simplex_vertex_range(simplex_handle)) {
             simplex._vertices.push_back(vertex_id);
         }
+		std::reverse(simplex._vertices.begin(), simplex._vertices.end());
         filtration._simplices.push_back(simplex);
         filtration._diameters.push_back(simplex_tree.filtration(simplex_handle));
     }
+
+	filtration._num_vertices = 0;
+	filtration._num_edges = 0;
+	filtration._num_faces = 0;
+	for (const auto& simplex : filtration._simplices) {
+		switch (simplex._dim) {
+			case 0:
+				filtration._num_vertices++;
+				break;
+			case 1:
+				filtration._num_edges++;
+				break;
+			case 2:
+				filtration._num_faces++;
+				break;
+		}
+	}
 
     return filtration;
 }

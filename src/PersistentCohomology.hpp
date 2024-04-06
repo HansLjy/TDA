@@ -94,6 +94,7 @@ struct PersistentCohomology {
         _num_simplices(num_simplices), _alphas(num_simplices, std::vector<Zp<p>>(num_simplices)) {}
 
     int _num_simplices;
+	std::array<int, 3> _bettis;
     std::set<int> _I;
     std::map<int, int> _PQ_map;
     std::vector<std::vector<Zp<p>>> _alphas;
@@ -206,6 +207,11 @@ PersistentCohomology<p> GeneratePersistentCohomology(
 
         simplex_cnt++;
     }
+
+	pc._bettis = {0, 0, 0};
+	for (const auto i_index : pc._I) {
+		pc._bettis[filtraton._simplices[i_index]._dim]++;
+	}
 
     return pc;
 }

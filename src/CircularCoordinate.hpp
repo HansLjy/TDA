@@ -34,9 +34,18 @@ std::optional<std::vector<std::vector<double>>> TryWithPrime(
     auto pc = GeneratePersistentCohomology<p>(filtration);
     std::cerr << "fuck: " << __FILE__ << ":" << __LINE__ << std::endl;
     std::cerr << pc << std::endl;
+
+	if (pc._bettis[1] == 0) {
+		spdlog::info("H^1 is trivial for the threshold");
+		return {};
+	}
     bool success = true;
     std::vector<std::vector<double>> results;
     for (auto i_index : pc._I) {
+		if (filtration._simplices[i_index]._dim != 1) {
+			// only consider H^1
+			continue;
+		}
         auto coefs_Z = LiftingToZ(filtration, pc._alphas[i_index]);
         if (coefs_Z.has_value()) {
             results.push_back(
@@ -176,6 +185,8 @@ std::optional<std::vector<std::vector<double>>> CalculateLocalCircularCoordinate
         }
         simplex_id++;
     }
+
+	// TODO: fix filtration info
 
     auto result = internal::TryWithPrime<47>(coned_filtration);
     if (result.has_value()) {
