@@ -36,8 +36,8 @@ public:
     void SetEdges(const Renderer::RowMajorMatrixX2u& edges);
 
     Renderer::VertexArray* _va;
-    int _num_edges;
-    int _edge_capacity;
+    int _num_edges = 0;
+    int _edge_capacity = 0;
 
     static PointCloud* GetPointCloud (
         int num_vertices,
@@ -66,9 +66,9 @@ public:
         const float far
     );
 
-    void SetPointCloud(
-        PointCloud* point_cloud
-    );
+	void SetThreshold(float threshold);
+
+	void SetVertices(const Renderer::RowMajorMatrixX3f& vertices);
 
 	void DisplayFunc() override;
 	void MouseButtonCallback(GLFWwindow *window, int button, int action, int mods) override;
@@ -76,6 +76,8 @@ public:
 	void KeyboardCallback(GLFWwindow *window, int key, int scancode, int action, int mods) override;
 	void WindowSizeCallback(GLFWwindow *window, int width, int height) override;
 
+	void ComputeGlobal();
+	void ComputeGraph();
 
 protected:
 	bool _left_down = false, _right_down = false, _middle_down = false;
@@ -92,7 +94,10 @@ protected:
 
 	bool _wire_frame_mode = false;
 
-    PointCloud* _point_cloud;
+	Renderer::RowMajorMatrixX3f _vertices;
+    PointCloud* _point_cloud = nullptr;
+	float _threshold = 0;
+	float _last_threshold = 0;
 };
 
 

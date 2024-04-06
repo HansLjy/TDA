@@ -20,3 +20,14 @@ message("GUDHI_VERSION = ${GUDHI_VERSION}")
 message("GUDHI_INCLUDE_DIRS = ${GUDHI_INCLUDE_DIRS}")
 
 target_include_directories(TDADependencies INTERFACE ${GUDHI_INCLUDE_DIRS})
+
+include(FetchContent)
+FetchContent_Declare(
+    libigl
+    GIT_REPOSITORY https://github.com/libigl/libigl.git
+    GIT_TAG v2.5.0
+)
+FetchContent_MakeAvailable(libigl)
+
+igl_include(core)
+target_link_libraries(TDADependencies INTERFACE igl::core)

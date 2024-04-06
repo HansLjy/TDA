@@ -46,10 +46,12 @@ std::optional<std::vector<std::vector<double>>> TryWithPrime(
 			// only consider H^1
 			continue;
 		}
+		std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
         auto coefs_Z = LiftingToZ(filtration, pc._alphas[i_index]);
         if (coefs_Z.has_value()) {
+			const auto& coefs_Z_val = coefs_Z.value();
             results.push_back(
-                LiftingToR(filtration, coefs_Z.value())
+                LiftingToR(filtration, coefs_Z_val)
             );
         } else {
             success = false;

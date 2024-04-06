@@ -14,7 +14,11 @@ struct Zp {
 
     int _val;
 
-    bool operator!=(const Zp& rhs) {
+	bool operator==(const Zp& rhs) const {
+		return _val == rhs._val;
+	}
+
+    bool operator!=(const Zp& rhs) const {
         return _val != rhs._val;
     }
 
@@ -70,7 +74,7 @@ struct Zp {
     }
 
     int Cast2Int() const {
-        return _val - (p - 1) / 2;
+		return (_val > (p - 1) / 2) ? (_val - p) : _val;
     }
 
 private:
@@ -159,13 +163,13 @@ std::ostream& operator<<(std::ostream& out, const PersistentCohomology<p>& pc) {
 
 template<int p>
 PersistentCohomology<p> GeneratePersistentCohomology(
-    const Filtration& filtraton
+    const Filtration& filtration
 ) {
-    const int num_simplices = filtraton._simplices.size();
+    const int num_simplices = filtration._simplices.size();
     PersistentCohomology<p> pc(num_simplices);
 
     int simplex_cnt = 0;
-    for (const auto& simplex : filtraton._simplices) {
+    for (const auto& simplex : filtration._simplices) {
         std::vector<Zp<p>> c(simplex_cnt);
         for (int i = 0; i < simplex_cnt; i++) {
             c[i] = internal::CoboundaryMap(pc._alphas[i], simplex);
@@ -206,11 +210,21 @@ PersistentCohomology<p> GeneratePersistentCohomology(
         }
 
         simplex_cnt++;
+
+		for (auto i_index : pc._I) {
+			for (int i = 0; i < simplex_cnt; i++) {
+				const auto& simplex_to_exam = filtration._simplices[i];
+				if (internal::CoboundaryMap(pc._alphas[i_index], simplex_to_exam) != 0) {
+					std::cerr << "fail on " << simplex_cnt << " with max non-zero index " << max_non_zero_index << std::endl;
+					exit(-1);
+				}
+			}
+		}
     }
 
 	pc._bettis = {0, 0, 0};
 	for (const auto i_index : pc._I) {
-		pc._bettis[filtraton._simplices[i_index]._dim]++;
+		pc._bettis[filtration._simplices[i_index]._dim]++;
 	}
 
     return pc;

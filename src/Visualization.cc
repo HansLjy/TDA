@@ -1,4 +1,5 @@
 #include "Visualization.hpp"
+#include "CircularCoordinate.hpp"
 #include <filesystem>
 #include "TDAConfig.hpp"
 #include "imgui.h"
@@ -60,13 +61,13 @@ void PointCloud::SetColors(const Renderer::RowMajorMatrixX3f &colors) {
 }
 
 void PointCloud::SetEdges(const Renderer::RowMajorMatrixX2u &edges) {
-    if (edges.size() > _num_edges) {
-        _num_edges = edges.size() * 2;
+	_num_edges = edges.rows();
+    if (_num_edges > _edge_capacity) {
+        _edge_capacity = _num_edges * 2;
         auto element_bffer = Renderer::GLUtility::CreateElementBuffer(
-            sizeof(unsigned int) * _num_edges, GL_DYNAMIC_DRAW
+            sizeof(unsigned int) * _edge_capacity * 2, GL_DYNAMIC_DRAW
         );
         _va->SetElementBuffer(element_bffer);
-
     }
     _va->FillElementBuffer(edges.data(), edges.size() * sizeof(unsigned int));
 }
@@ -102,6 +103,10 @@ void TDAGUI::PreCompute() {
     );
 }
 
+void TDAGUI::SetThreshold(float threshold) {
+	_threshold = threshold;
+}
+
 void TDAGUI::SetCamera(
     const glm::vec3& position,
     const float rotz, const float roty,
@@ -114,8 +119,11 @@ void TDAGUI::SetCamera(
     );
 }
 
-void TDAGUI::SetPointCloud(PointCloud *point_cloud) {
-    _point_cloud = point_cloud;
+void TDAGUI::SetVertices(const Renderer::RowMajorMatrixX3f &vertices) {
+	delete _point_cloud;
+	_point_cloud = TDA::PointCloud::GetPointCloud(vertices.rows(), 0);
+	_vertices = vertices;
+	_point_cloud->SetCoordinates(vertices);
 }
 
 void TDAGUI::DisplayFunc() {
@@ -124,6 +132,10 @@ void TDAGUI::DisplayFunc() {
 	glDepthFunc(GL_LESS);
 
 	if (_wire_frame_mode) {
+		if (_threshold != _last_threshold) {
+			_last_threshold = _threshold;
+			ComputeGraph();
+		}
         RenderEdges(*_wireframe_shader, *_camera, *_point_cloud);
 	} else {
         RenderColoredPointCloud(*_point_cloud_shader, *_camera, *_point_cloud);
@@ -131,12 +143,52 @@ void TDAGUI::DisplayFunc() {
 
     ImGui::Begin("Control Panel");
     ImGui::Checkbox("wireframe mode", &_wire_frame_mode);
+	ImGui::SliderFloat("threshold", &_threshold, 0, 2.5);
+	if (ImGui::Button("Compute Global")) {
+		ComputeGlobal();
+	}
     ImGui::End();
 
 	ImGui::Render();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
 	glfwSwapBuffers(_window);
+}
+
+void TDAGUI::ComputeGlobal() {
+	auto circular_coords = TDA::CalculateGlobalCircularCoordinate<3>(
+		_vertices.cast<double>(), _threshold
+	);
+	const int num_vertices = _vertices.rows();
+	Renderer::RowMajorMatrixX3f colors(num_vertices, 3);
+	if (circular_coords.has_value()) {
+        auto& hues = circular_coords.value()[0];
+        for (int i = 0; i < num_vertices; i++) {
+            colors.row(i) = TDA::HSV2RGB(hues[i] - std::floor(hues[i]), 1.0, 1.0);
+        }
+    }
+	std::cerr << colors << std::endl;
+	_point_cloud->SetColors(colors);
+}
+
+void TDAGUI::ComputeGraph() {
+	std::vector<std::pair<unsigned int, unsigned int>> edges;
+	const int num_vertices = _vertices.rows();
+    for (int i = 0; i < num_vertices; i++) {
+        for (int j = i + 1; j < num_vertices; j++) {
+            if ((_vertices.row(i) - _vertices.row(j)).norm() < _threshold) {
+                edges.push_back(std::make_pair(i, j));
+            }
+        }
+    }
+
+    const int num_edges = edges.size();
+    Renderer::RowMajorMatrixX2u edges_eigen(num_edges, 2);
+    for (int i = 0; i < num_edges; i++) {
+        edges_eigen.row(i) << edges[i].first, edges[i].second;
+    }
+
+	_point_cloud->SetEdges(edges_eigen);
 }
 
 // normalize val to [-1, 1]
