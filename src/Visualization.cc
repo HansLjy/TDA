@@ -60,6 +60,14 @@ void PointCloud::SetColors(const Renderer::RowMajorMatrixX3f &colors) {
 }
 
 void PointCloud::SetEdges(const Renderer::RowMajorMatrixX2u &edges) {
+    if (edges.size() > _num_edges) {
+        _num_edges = edges.size() * 2;
+        auto element_bffer = Renderer::GLUtility::CreateElementBuffer(
+            sizeof(unsigned int) * _num_edges, GL_DYNAMIC_DRAW
+        );
+        _va->SetElementBuffer(element_bffer);
+
+    }
     _va->FillElementBuffer(edges.data(), edges.size() * sizeof(unsigned int));
 }
 
@@ -120,6 +128,10 @@ void TDAGUI::DisplayFunc() {
 	} else {
         RenderColoredPointCloud(*_point_cloud_shader, *_camera, *_point_cloud);
     }
+
+    ImGui::Begin("Control Panel");
+    ImGui::Checkbox("wireframe mode", &_wire_frame_mode);
+    ImGui::End();
 
 	ImGui::Render();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());

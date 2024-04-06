@@ -32,6 +32,8 @@ std::optional<std::vector<std::vector<double>>> TryWithPrime(
     const Filtration& filtration
 ) {
     auto pc = GeneratePersistentCohomology<p>(filtration);
+    std::cerr << "fuck: " << __FILE__ << ":" << __LINE__ << std::endl;
+    std::cerr << pc << std::endl;
     bool success = true;
     std::vector<std::vector<double>> results;
     for (auto i_index : pc._I) {
@@ -60,17 +62,21 @@ std::optional<std::vector<std::vector<double>>> CalculateGlobalCircularCoordinat
     const double threshold
 ) {
     auto filtration = GenerateFiltration(point_cloud, threshold);
-    constexpr int primes[] = {47, 53, 59, 997};
+    std::cerr << "fuck: " << __FILE__ << ":" << __LINE__ << std::endl;
+    std::cerr << filtration << std::endl;
     auto result = internal::TryWithPrime<47>(filtration);
     if (result.has_value()) {
+        spdlog::info("Success with prime 47");
         return result.value();
     }
     result = internal::TryWithPrime<53>(filtration);
     if (result.has_value()) {
+        spdlog::info("Success with prime 53");
         return result.value();
     }
     result = internal::TryWithPrime<59>(filtration);
     if (result.has_value()) {
+        spdlog::info("Success with prime 59");
         return result.value();
     }
     result = internal::TryWithPrime<997>(filtration);

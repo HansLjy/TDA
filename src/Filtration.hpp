@@ -20,6 +20,8 @@ struct Filtration {
     std::vector<double> _diameters;
 };
 
+std::ostream& operator<<(std::ostream& out, const Filtration& filtration);
+
 
 template<int dim>
 Filtration GenerateFiltration(
@@ -41,19 +43,15 @@ Filtration GenerateFiltration(
     const double threshold
 ) {
 
-    std::vector<typename Kernel<dim>::Point_d> points;
+    std::vector<std::vector<double>> points;
 
     int num_points = point_cloud.rows();
     for (int i = 0; i < num_points; i++) {
-        std::array<double, dim> data;
+        std::vector<double> point(dim);
         for (int j = 0; j < dim; j++) {
-            data[j] = point_cloud(i, j);
+            point[j] = point_cloud(i, j);
         }
-        points.push_back(
-            Kernel<dim>::Point_d(
-                dim, data.begin(), data.end()
-            )
-        );
+        points.push_back(point);
     }
 
     Gudhi::rips_complex::Rips_complex<Gudhi::Simplex_tree<>::Filtration_value>
@@ -81,6 +79,7 @@ Filtration GenerateFiltration(
         for (auto face_simplex_handle : simplex_tree.boundary_simplex_range(simplex_handle)) {
             simplex._faces.push_back(simplex_tree.key(face_simplex_handle));
         }
+        std::reverse(simplex._faces.begin(), simplex._faces.end());
         for (auto vertex_id : simplex_tree.simplex_vertex_range(simplex_handle)) {
             simplex._vertices.push_back(vertex_id);
         }

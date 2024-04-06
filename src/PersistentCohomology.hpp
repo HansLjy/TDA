@@ -8,28 +8,84 @@ template<int p>
 struct Zp {
     static_assert(p != 2, "Must use a prime number larger than 2");
 
+    Zp(int val = 0) : _val(val) {
+        assert(0 <= val && val < p);
+    }
+
     int _val;
 
-    Zp operator+(const Zp& rhs) const;
-    Zp operator-() const;
-    Zp operator-(const Zp& rhs) const;
-    Zp operator*(const Zp& rhs) const;
+    bool operator!=(const Zp& rhs) {
+        return _val != rhs._val;
+    }
 
-    Zp Inv() const;
-    Zp operator/(const Zp& rhs) const;
+    Zp<p> operator+(const Zp& rhs) const {
+        Zp<p> result = *this;
+        result += rhs;
+        return result;
+    }
 
-    Zp GetZp(int val);
+    Zp<p>& operator+=(const Zp& rhs) {
+        _val += rhs._val;
+        if (_val >= p) {
+            _val -= p;
+        }
+        return *this;
+    }
 
-    int Cast2Int() {
+    Zp<p> operator-() const {
+        return Zp<p>(_val == 0 ? 0 : p - _val);
+    }
+
+    Zp<p> operator-(const Zp& rhs) const {
+        Zp<p> result = *this;
+        result -= rhs;
+        return result;
+    }
+
+    Zp<p>& operator-=(const Zp& rhs) {
+        _val -= rhs._val;
+        if (_val < 0) {
+            _val += p;
+        }
+        return *this;
+    }
+
+    Zp<p> operator*(const Zp& rhs) const {
+        Zp<p> result = *this;
+        result *= rhs;
+        return result;
+    }
+
+    Zp<p>& operator*=(const Zp& rhs) {
+        _val = _val * rhs._val % p;
+        return *this;
+    }
+
+    Zp<p> Inv() const {
+        return Pow(_val, p - 2);
+    }
+
+    Zp<p> operator/(const Zp& rhs) const {
+        return *this * rhs.Inv();
+    }
+
+    int Cast2Int() const {
         return _val - (p - 1) / 2;
     }
 
 private:
-    Zp(int val) : _val(val) {}
 
-    static bool _initialized;
-    static std::array<int, p> _inverse;
-    static void Initialize();
+    static int Pow(int x, int n) {
+        int result = 1;
+        while (n) {
+            if (n & 1) {
+                result *= x;
+            }
+            x = x * x;
+            n >>= 1;
+        }
+        return result;
+    }
 };
 
 template <int p>
@@ -42,6 +98,9 @@ struct PersistentCohomology {
     std::map<int, int> _PQ_map;
     std::vector<std::vector<Zp<p>>> _alphas;
 };
+
+template<int p>
+std::ostream& operator<<(std::ostream& out, const PersistentCohomology<p>& pc);
 
 template<int p>
 PersistentCohomology<p> GeneratePersistentCohomology(
@@ -72,6 +131,29 @@ T CoboundaryMap(const std::vector<T>& coefs, const Simplex& simplex) {
 
 }
 
+template<int p>
+std::ostream& operator<<(std::ostream& out, const PersistentCohomology<p>& pc) {
+    out << "Live cocycles" << std::endl;
+    for (const auto index : pc._I) {
+        out << index << " ";
+    }
+    out << std::endl;
+
+    out << "Dead cocycles" << std::endl;
+    for (const auto pq : pc._PQ_map) {
+        out << pq.first << " " << pq.second << std::endl;
+    }
+    out << std::endl;
+
+    out << "Coefficients" << std::endl;
+    for (int i = 0; i < pc._num_simplices; i++) {
+        for (const auto c : pc._alphas[i]) {
+            out << c._val << "\t";
+        }
+        out << std::endl;
+    }
+    return out;    
+}
 
 
 template<int p>
@@ -110,14 +192,16 @@ PersistentCohomology<p> GeneratePersistentCohomology(
             pc._I.erase(max_non_zero_index);
             pc._PQ_map.insert(std::make_pair(max_non_zero_index, simplex_cnt));
             for (auto i_index : pc._I) {
-                auto ratio = c[i_index] / c[max_non_zero_index];
-                for (int j = max_non_zero_index; j < simplex_cnt; j++) {
-                    pc._alphas[i_index][j] -= ratio * pc._alphas[max_non_zero_index][j] * ratio;
-                }
-                if (i_index > max_non_zero_index) {
+                if (i_index >= max_non_zero_index) {
                     break;
                 }
+
+                auto ratio = c[i_index] / c[max_non_zero_index];
+                for (int j = max_non_zero_index; j < simplex_cnt; j++) {
+                    pc._alphas[i_index][j] -= ratio * pc._alphas[max_non_zero_index][j];
+                }
             }
+            pc._alphas[simplex_cnt][simplex_cnt] = c[max_non_zero_index];
         }
 
         simplex_cnt++;
