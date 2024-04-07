@@ -6,14 +6,14 @@
 namespace TDA {
 
 template<int p>
-std::optional<std::vector<int>> LiftingToZ(
+std::optional<SparseCoefs<int>> LiftingToZ(
     const Filtration& filtration,
-    const std::vector<Zp<p>>& coefs
+    const SparseCoefs<Zp<p>>& coefs
 );
 
 inline std::vector<double> LiftingToR(
     const Filtration& filtration,
-    const std::vector<int>& coefs
+    const SparseCoefs<int>& coefs
 );
 
 }
@@ -25,10 +25,9 @@ namespace internal {
 
 inline bool CheckPersistentCohomology(
     const Filtration& filtration,
-    const std::vector<int>& coefs
+    const SparseCoefs<int>& coefs
 ) {
     for (const auto& simplex : filtration._simplices) {
-		auto cb = CoboundaryMap(coefs, simplex);
         if (CoboundaryMap(coefs, simplex) != 0) {
             return false;
         }
@@ -40,13 +39,18 @@ inline bool CheckPersistentCohomology(
 
 
 template<int p>
-std::optional<std::vector<int>> LiftingToZ(
-    const Filtration& filtration,
-    const std::vector<Zp<p>> &coefs
+std::optional<SparseCoefs<int>> LiftingToZ(
+    const Filtration &filtration,
+    const SparseCoefs<Zp<p>> &coefs
 ) {
-    std::vector<int> lifted_coefs;
-    for (const auto& coef : coefs) {
-        lifted_coefs.push_back(coef.Cast2Int());
+    SparseCoefs<int> lifted_coefs;
+    for (const auto& coef : coefs._non_zeros) {
+        lifted_coefs._non_zeros.push_back(
+            typename SparseCoefs<int>::Term(
+                coef._pos,
+                coef._val.Cast2Int()
+            )
+        );
     }
 
     if (internal::CheckPersistentCohomology(filtration, lifted_coefs)) {
@@ -58,7 +62,7 @@ std::optional<std::vector<int>> LiftingToZ(
 
 inline std::vector<double> LiftingToR(
     const Filtration& filtration,
-    const std::vector<int>& coefs
+    const SparseCoefs<int>& coefs
 ) {
 	const int num_vertices = filtration._num_vertices;
 	const int num_edges = filtration._num_edges;

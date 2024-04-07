@@ -20,7 +20,7 @@ TEST(PersistentCohomologyTest, CoboundaryTest) {
 
 	for (auto i_index : pc._I) {
 		for (const auto& simplex : filtration._simplices) {
-			EXPECT_EQ(TDA::internal::CoboundaryMap(pc._alphas[i_index], simplex), TDA::Zp<53>(0));
+			EXPECT_EQ(TDA::internal::CoboundaryMap(pc._coefs[i_index], simplex), 0);
 		}
 	}
 
@@ -28,10 +28,10 @@ TEST(PersistentCohomologyTest, CoboundaryTest) {
 		for (int i = 0; i < num_simplices; i++) {
 			EXPECT_EQ(
 				TDA::internal::CoboundaryMap(
-					pc._alphas[p_index],
+					pc._coefs[p_index],
 					filtration._simplices[i]
 				),
-				pc._alphas[q_index][i]
+				pc._coefs[q_index][i]
 			);
 		}
 	}

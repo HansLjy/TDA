@@ -46,7 +46,7 @@ std::optional<std::vector<std::vector<double>>> TryWithPrime(
 			// only consider H^1
 			continue;
 		}
-        auto coefs_Z = LiftingToZ(filtration, pc._alphas[i_index]);
+        auto coefs_Z = LiftingToZ(filtration, pc._coefs[i_index]);
         if (coefs_Z.has_value()) {
 			const auto& coefs_Z_val = coefs_Z.value();
             results.push_back(

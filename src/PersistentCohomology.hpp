@@ -93,16 +93,70 @@ private:
     }
 };
 
+template<typename T>
+struct SparseCoefs {
+    struct Term {
+        Term(int pos, const T& val) : _pos(pos), _val(val) {}
+        int _pos;
+        T _val;
+    };
+
+    std::vector<Term> _non_zeros;
+
+    // *this -= rhs * ratio
+    void Eliminate(const SparseCoefs<T>& rhs, const T& ratio) {
+        std::vector<Term> result;
+        result.reserve(_non_zeros.size() + rhs._non_zeros.size());
+
+        int cur_index = 0;
+        for (const auto& term : rhs._non_zeros) {
+            while (cur_index < _non_zeros.size() && _non_zeros[cur_index]._pos < term._pos) {
+                result.push_back(_non_zeros[cur_index++]);
+            }
+            if (cur_index >= _non_zeros.size() || _non_zeros[cur_index]._pos > term._pos) {
+                result.push_back(Term(term._pos, - ratio * term._val));
+            } else {
+                T val = _non_zeros[cur_index]._val - ratio * term._val;
+                if (val != 0) {
+                    result.push_back(Term(term._pos, val));
+                }
+                cur_index++;
+            }
+        }
+        while (cur_index < _non_zeros.size()) {
+            result.push_back(_non_zeros[cur_index++]);
+        }
+        _non_zeros = result;
+    }
+
+    T operator[](int pos) const {
+        auto itr = std::lower_bound(
+            _non_zeros.begin(),
+            _non_zeros.end(),
+            Term(pos, 0),
+            [](const Term& lhs, const Term& rhs) {
+                return lhs._pos < rhs._pos;
+            }
+        );
+        if (itr == _non_zeros.end() || itr->_pos > pos) {
+            return 0;
+        }
+        return itr->_val;
+    }
+};
+
 template <int p>
 struct PersistentCohomology {
+
     PersistentCohomology(int num_simplices):
-        _num_simplices(num_simplices), _alphas(num_simplices, std::vector<Zp<p>>(num_simplices)) {}
+        _num_simplices(num_simplices),
+        _coefs(num_simplices) {}
 
     int _num_simplices;
 	std::array<int, 3> _bettis;
     std::set<int> _I;
     std::map<int, int> _PQ_map;
-    std::vector<std::vector<Zp<p>>> _alphas;
+    std::vector<SparseCoefs<Zp<p>>> _coefs;
 };
 
 template<int p>
@@ -121,7 +175,7 @@ namespace TDA {
 namespace internal {
 
 template<typename T>
-T CoboundaryMap(const std::vector<T>& coefs, const Simplex& simplex) {
+T CoboundaryMap(const SparseCoefs<T>& coefs, const Simplex &simplex) {
     bool sign_positive = true;
     T val = 0;
     for (const auto face : simplex._faces) {
@@ -153,7 +207,7 @@ std::ostream& operator<<(std::ostream& out, const PersistentCohomology<p>& pc) {
 
     out << "Coefficients" << std::endl;
     for (int i = 0; i < pc._num_simplices; i++) {
-        for (const auto c : pc._alphas[i]) {
+        for (const auto c : pc._coefs[i]) {
             out << c._val << "\t";
         }
         out << std::endl;
@@ -173,12 +227,14 @@ PersistentCohomology<p> GeneratePersistentCohomology(
     for (const auto& simplex : filtration._simplices) {
         std::vector<Zp<p>> c(simplex_cnt);
         for (int i = 0; i < simplex_cnt; i++) {
-            c[i] = internal::CoboundaryMap(pc._alphas[i], simplex);
+            c[i] = internal::CoboundaryMap(pc._coefs[i], simplex);
         }
 
         // Deal with P & Q
         for (auto [p_index, q_index] : pc._PQ_map) {
-            pc._alphas[q_index][simplex_cnt] = c[p_index];
+            pc._coefs[q_index]._non_zeros.push_back(
+                typename SparseCoefs<Zp<p>>::Term(simplex_cnt, c[p_index])
+            );
         }
 
         int max_non_zero_index = -1;
@@ -193,7 +249,9 @@ PersistentCohomology<p> GeneratePersistentCohomology(
         if (max_non_zero_index < 0) {
             // all zero
             pc._I.insert(simplex_cnt);
-            pc._alphas[simplex_cnt][simplex_cnt] = 1;
+            pc._coefs[simplex_cnt]._non_zeros.push_back(
+                typename SparseCoefs<Zp<p>>::Term(simplex_cnt, 1)
+            );
         } else {
             pc._I.erase(max_non_zero_index);
             pc._PQ_map.insert(std::make_pair(max_non_zero_index, simplex_cnt));
@@ -203,13 +261,14 @@ PersistentCohomology<p> GeneratePersistentCohomology(
                 }
 
                 auto ratio = c[i_index] / c[max_non_zero_index];
-                for (int j = max_non_zero_index; j < simplex_cnt; j++) {
-                    pc._alphas[i_index][j] -= ratio * pc._alphas[max_non_zero_index][j];
+                if (ratio != 0) {
+                    pc._coefs[i_index].Eliminate(pc._coefs[max_non_zero_index], ratio);
                 }
             }
-            pc._alphas[simplex_cnt][simplex_cnt] = c[max_non_zero_index];
+            pc._coefs[simplex_cnt]._non_zeros.push_back(
+                typename SparseCoefs<Zp<p>>::Term(simplex_cnt, c[max_non_zero_index])
+            );
         }
-
         simplex_cnt++;
     }
 
