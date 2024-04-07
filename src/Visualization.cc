@@ -182,9 +182,17 @@ void TDAGUI::DisplayFunc() {
             );
             break;
         case kLocalWireframeMode:
+            if (_threshold != _last_local_threshold || _radius != _last_radius || _center != _last_center) {
+                _last_global_threshold = _threshold;
+                _last_radius = _radius;
+                _last_center = _center;
+                ComputeLocalGraph();
+            }
+            RenderEdges(*_wireframe_shader, *_camera, *_point_cloud);
+            break;
         case kGlobalWireframeMode:
-            if (_threshold != _last_threshold) {
-                _last_threshold = _threshold;
+            if (_threshold != _last_global_threshold) {
+                _last_global_threshold = _threshold;
                 ComputeGlobalGraph();
             }
             RenderEdges(*_wireframe_shader, *_camera, *_point_cloud);
@@ -209,7 +217,7 @@ void TDAGUI::RenderImGuiPanel() {
         "color"
     };
 
-    const char* combo_preview_value = modes[_cur_mode];  // Pass in the preview value visible before opening the combo (it could be anything)
+    const char* combo_preview_value = modes[_cur_mode];
     if (ImGui::BeginCombo("Mode", combo_preview_value))
     {
         for (int n = 0; n < IM_ARRAYSIZE(modes); n++)
@@ -294,7 +302,34 @@ void TDAGUI::ComputeGlobal() {
 }
 
 void TDAGUI::ComputeLocal() {
-    // TODO:
+    auto result = TDA::CalculateLocalCircularCoordinate<3>(
+        _vertices.cast<double>(),
+        _center.cast<double>(),
+        _radius,
+        _threshold
+    );
+    if (result.has_value()) {
+	    const int num_vertices = _vertices.rows();
+        Renderer::RowMajorMatrixX3f colors(num_vertices, 3);
+        auto& [local_vertex_ids, circular_coords] = result.value();
+        auto& hues = circular_coords[0];
+        int local_id = 0;
+        for (int i = 0; i < num_vertices; i++) {
+            if (i == local_vertex_ids[local_id]) {
+                colors.row(i) = TDA::HSV2RGB(
+                    hues[local_id + 1] - std::floor(hues[local_id + 1]),
+                    1.0, 1.0
+                );
+                local_id++;
+            } else {
+                colors.row(i) << 1, 1, 1;
+            }
+        }
+        _point_cloud->SetColors(colors);
+    } else {
+        _point_cloud->SetColors(_base_colors);
+    }
+    
 }
 
 void TDAGUI::ComputeGlobalGraph() {
@@ -304,6 +339,29 @@ void TDAGUI::ComputeGlobalGraph() {
         for (int j = i + 1; j < num_vertices; j++) {
             if ((_vertices.row(i) - _vertices.row(j)).norm() < _threshold) {
                 edges.push_back(std::make_pair(i, j));
+            }
+        }
+    }
+
+    const int num_edges = edges.size();
+    Renderer::RowMajorMatrixX2u edges_eigen(num_edges, 2);
+    for (int i = 0; i < num_edges; i++) {
+        edges_eigen.row(i) << edges[i].first, edges[i].second;
+    }
+
+	_point_cloud->SetEdges(edges_eigen);
+}
+
+void TDAGUI::ComputeLocalGraph() {
+	std::vector<std::pair<unsigned int, unsigned int>> edges;
+
+	const int num_vertices = _vertices.rows();
+    for (int i = 0; i < num_vertices; i++) {
+        if ((_vertices.row(i) - _center.transpose()).norm() < _radius) {
+            for (int j = i + 1; j < num_vertices; j++) {
+                if ((_vertices.row(i) - _vertices.row(j)).norm() < _threshold) {
+                    edges.push_back(std::make_pair(i, j));
+                }
             }
         }
     }

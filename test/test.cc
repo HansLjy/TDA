@@ -1,4 +1,5 @@
 #include "gtest/gtest.h"
+#include "CircularCoordinate.hpp"
 #include "PersistentCohomology.hpp"
 #include "igl/readOBJ.h"
 #include "TestConfig.hpp"
@@ -35,4 +36,20 @@ TEST(PersistentCohomologyTest, CoboundaryTest) {
 			);
 		}
 	}
+}
+
+TEST(CircularCoordinateTest, LocalCoordinateTest) {
+	double threshold = 0.77;
+	double radius = 0.77;
+
+	Eigen::Vector3d center;
+	center << 0, 1, 0;
+
+	Eigen::MatrixX3d V;
+	Eigen::MatrixX3i F;
+	igl::readOBJ(fs::path(TDA_MODEL_DIR) / "gen_circle_8.obj", V, F);
+
+	EXPECT_NO_FATAL_FAILURE(
+		auto result = TDA::CalculateLocalCircularCoordinate<3>(V, center, radius, threshold);
+	);
 }

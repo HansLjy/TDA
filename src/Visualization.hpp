@@ -107,9 +107,11 @@ protected:
 	Renderer::RowMajorMatrixX3f _base_colors;
     PointCloud* _point_cloud = nullptr;
 	float _threshold = 0;
-	float _last_threshold = 0;
+	float _last_global_threshold = 0;
+	float _last_local_threshold = 0;
 
     Eigen::Vector3f _center;
+    Eigen::Vector3f _last_center = Eigen::Vector3f::Zero();
     float _radius;
     float _last_radius = 0;
 

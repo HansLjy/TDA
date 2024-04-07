@@ -67,6 +67,21 @@ inline std::vector<double> LiftingToR(
 	const int num_vertices = filtration._num_vertices;
 	const int num_edges = filtration._num_edges;
 
+    std::vector<int> vertex_ids;
+    vertex_ids.reserve(num_vertices * 2);
+
+    int vertex_cnt = 0;
+    for (const auto& simplex : filtration._simplices) {
+        if (simplex._dim == 0) {
+            vertex_ids.push_back(vertex_cnt++);
+        } else {
+            vertex_ids.push_back(-1);
+        }
+        if (vertex_cnt >= num_vertices) {
+            break;
+        }
+    }
+
     Eigen::SparseMatrix<double> d0(num_edges, num_vertices);
     Eigen::VectorXd b(num_edges);
 
@@ -76,10 +91,10 @@ inline std::vector<double> LiftingToR(
     for (const auto& simplex : filtration._simplices) {
         if (simplex._dim == 1) {
             coo.push_back(Eigen::Triplet<double>(
-                edge_id, simplex._faces[0], 1
+                edge_id, vertex_ids[simplex._faces[0]], 1
             ));
             coo.push_back(Eigen::Triplet<double>(
-                edge_id, simplex._faces[1], -1
+                edge_id, vertex_ids[simplex._faces[1]], -1
             ));
 			b(edge_id) = coefs[simplex_id];
 			edge_id++;
