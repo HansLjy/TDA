@@ -84,8 +84,9 @@ private:
         while (n) {
             if (n & 1) {
                 result *= x;
+                result %= p;
             }
-            x = x * x;
+            x = x * x % p;
             n >>= 1;
         }
         return result;
@@ -210,16 +211,6 @@ PersistentCohomology<p> GeneratePersistentCohomology(
         }
 
         simplex_cnt++;
-
-		for (auto i_index : pc._I) {
-			for (int i = 0; i < simplex_cnt; i++) {
-				const auto& simplex_to_exam = filtration._simplices[i];
-				if (internal::CoboundaryMap(pc._alphas[i_index], simplex_to_exam) != 0) {
-					std::cerr << "fail on " << simplex_cnt << " with max non-zero index " << max_non_zero_index << std::endl;
-					exit(-1);
-				}
-			}
-		}
     }
 
 	pc._bettis = {0, 0, 0};

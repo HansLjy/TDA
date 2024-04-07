@@ -30,16 +30,6 @@ inline bool CheckPersistentCohomology(
     for (const auto& simplex : filtration._simplices) {
 		auto cb = CoboundaryMap(coefs, simplex);
         if (CoboundaryMap(coefs, simplex) != 0) {
-			std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
-			std::cerr << "Lifting fail on simplex [ ";
-			for (auto face : simplex._faces) {
-				std::cerr << face << " ";
-			}
-			std::cerr << "], [ ";
-			for (auto vertex : simplex._vertices) {
-				std::cerr << vertex << " ";
-			}
-			std::cerr << "]: " << std::endl;
             return false;
         }
     }
@@ -58,11 +48,6 @@ std::optional<std::vector<int>> LiftingToZ(
     for (const auto& coef : coefs) {
         lifted_coefs.push_back(coef.Cast2Int());
     }
-	std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
-	for (const auto coef : lifted_coefs) {
-		std::cerr << coef << " ";
-	}
-	std::cerr << std::endl;
 
     if (internal::CheckPersistentCohomology(filtration, lifted_coefs)) {
         return lifted_coefs;

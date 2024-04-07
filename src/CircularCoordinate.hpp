@@ -32,8 +32,8 @@ std::optional<std::vector<std::vector<double>>> TryWithPrime(
     const Filtration& filtration
 ) {
     auto pc = GeneratePersistentCohomology<p>(filtration);
-    std::cerr << "fuck: " << __FILE__ << ":" << __LINE__ << std::endl;
-    std::cerr << pc << std::endl;
+    // std::cerr << "fuck: " << __FILE__ << ":" << __LINE__ << std::endl;
+    // std::cerr << pc << std::endl;
 
 	if (pc._bettis[1] == 0) {
 		spdlog::info("H^1 is trivial for the threshold");
@@ -46,7 +46,6 @@ std::optional<std::vector<std::vector<double>>> TryWithPrime(
 			// only consider H^1
 			continue;
 		}
-		std::cerr << __FILE__ << ":" << __LINE__ << std::endl;
         auto coefs_Z = LiftingToZ(filtration, pc._alphas[i_index]);
         if (coefs_Z.has_value()) {
 			const auto& coefs_Z_val = coefs_Z.value();
@@ -73,8 +72,8 @@ std::optional<std::vector<std::vector<double>>> CalculateGlobalCircularCoordinat
     const double threshold
 ) {
     auto filtration = GenerateFiltration(point_cloud, threshold);
-    std::cerr << "fuck: " << __FILE__ << ":" << __LINE__ << std::endl;
-    std::cerr << filtration << std::endl;
+    // std::cerr << "fuck: " << __FILE__ << ":" << __LINE__ << std::endl;
+    // std::cerr << filtration << std::endl;
     auto result = internal::TryWithPrime<47>(filtration);
     if (result.has_value()) {
         spdlog::info("Success with prime 47");

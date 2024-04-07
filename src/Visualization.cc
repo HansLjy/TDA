@@ -167,7 +167,6 @@ void TDAGUI::ComputeGlobal() {
             colors.row(i) = TDA::HSV2RGB(hues[i] - std::floor(hues[i]), 1.0, 1.0);
         }
     }
-	std::cerr << colors << std::endl;
 	_point_cloud->SetColors(colors);
 }
 
