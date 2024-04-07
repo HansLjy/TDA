@@ -49,9 +49,9 @@ protected:
 
 };
 
-void RenderColoredPointCloud(const Renderer::Shader& shader, const Camera& camera, const PointCloud& point_cloud);
+void RenderPoint(const Camera& camera, const Eigen::Vector3f& point, const Eigen::Vector3f& color);
+void RenderPointCloud(const Renderer::Shader& shader, const Camera& camera, const PointCloud& point_cloud);
 void RenderEdges(const Renderer::Shader& shader, const Camera& camera, const PointCloud& point_cloud);
-
 
 class TDAGUI : public Renderer::GUI {
 public:
@@ -65,9 +65,7 @@ public:
         const float near,
         const float far
     );
-
 	void SetThreshold(float threshold);
-
 	void SetVertices(const Renderer::RowMajorMatrixX3f& vertices);
 
 	void DisplayFunc() override;
@@ -76,8 +74,14 @@ public:
 	void KeyboardCallback(GLFWwindow *window, int key, int scancode, int action, int mods) override;
 	void WindowSizeCallback(GLFWwindow *window, int width, int height) override;
 
+    void RenderImGuiPanel();
+
+    void ClearColor();
 	void ComputeGlobal();
-	void ComputeGraph();
+	void ComputeLocal();
+	void ComputeGlobalGraph();
+	void ComputeLocalGraph();
+    void ComputeSelectedVertices();
 
 protected:
 	bool _left_down = false, _right_down = false, _middle_down = false;
@@ -92,12 +96,23 @@ protected:
 	Renderer::Shader* _point_cloud_shader = nullptr;
 	Renderer::Shader* _wireframe_shader = nullptr;
 
-	bool _wire_frame_mode = false;
+    static const int kCenterSelectMode = 0;
+    static const int kGlobalWireframeMode = 1;
+    static const int kLocalWireframeMode = 2;
+    static const int kColorMode = 3;
+
+    int _cur_mode = 0;
 
 	Renderer::RowMajorMatrixX3f _vertices;
+	Renderer::RowMajorMatrixX3f _base_colors;
     PointCloud* _point_cloud = nullptr;
 	float _threshold = 0;
 	float _last_threshold = 0;
+
+    Eigen::Vector3f _center;
+    float _radius;
+    float _last_radius = 0;
+
 };
 
 

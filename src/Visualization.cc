@@ -31,7 +31,7 @@ PointCloud* PointCloud::GetPointCloud(
 
     auto color_buffer = Renderer::GLUtility::CreateArrayBuffer(
         num_vertices * 3 * sizeof(float), 
-        GL_STATIC_DRAW
+        GL_DYNAMIC_DRAW
     );
     va->AddArrayBuffer(Renderer::GLUtility::PER_VERTEX_COLOR_LOCATION, color_buffer);
     va->ConfigArrayBuffer(
@@ -72,7 +72,39 @@ void PointCloud::SetEdges(const Renderer::RowMajorMatrixX2u &edges) {
     _va->FillElementBuffer(edges.data(), edges.size() * sizeof(unsigned int));
 }
 
-void RenderColoredPointCloud(
+void RenderPoint(
+    const Camera& camera,
+    const Eigen::Vector3f &point,
+    const Eigen::Vector3f &color
+) {
+    glUseProgram(0);
+    static const float default_color[] = {1, 1, 1};
+    glm::vec4 point_4d(point(0), point(1), point(2), 1.0);
+    auto transformed_point = camera.GetProjectionMatrix() * camera.GetViewMatrix() * point_4d;
+    
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+
+    glPointSize(5);
+    glColor3f(color(0), color(1), color(2));
+
+    glBegin(GL_POINTS);
+    glVertex4f(
+        transformed_point[0],
+        transformed_point[1],
+        transformed_point[2],
+        transformed_point[3]
+    );
+    glEnd();
+
+    glColor3fv(default_color);
+    glPointSize(1);
+}
+
+void RenderPointCloud(
     const Renderer::Shader& shader,
     const Camera& camera,
     const PointCloud& point_cloud
@@ -124,6 +156,10 @@ void TDAGUI::SetVertices(const Renderer::RowMajorMatrixX3f &vertices) {
 	_point_cloud = TDA::PointCloud::GetPointCloud(vertices.rows(), 0);
 	_vertices = vertices;
 	_point_cloud->SetCoordinates(vertices);
+    _base_colors = Renderer::RowMajorMatrixX3f::Ones(
+        vertices.rows(), vertices.cols()
+    );
+    _point_cloud->SetColors(_base_colors);
 }
 
 void TDAGUI::DisplayFunc() {
@@ -131,28 +167,113 @@ void TDAGUI::DisplayFunc() {
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
 
-	if (_wire_frame_mode) {
-		if (_threshold != _last_threshold) {
-			_last_threshold = _threshold;
-			ComputeGraph();
-		}
-        RenderEdges(*_wireframe_shader, *_camera, *_point_cloud);
-	} else {
-        RenderColoredPointCloud(*_point_cloud_shader, *_camera, *_point_cloud);
+    switch (_cur_mode) {
+        case kCenterSelectMode:
+            ComputeSelectedVertices();
+            RenderPointCloud(
+                *_point_cloud_shader,
+                *_camera,
+                *_point_cloud
+            );
+            RenderPoint(
+                *_camera,
+                _center,
+                (Eigen::Vector3f() << 0, 0, 1).finished()
+            );
+            break;
+        case kLocalWireframeMode:
+        case kGlobalWireframeMode:
+            if (_threshold != _last_threshold) {
+                _last_threshold = _threshold;
+                ComputeGlobalGraph();
+            }
+            RenderEdges(*_wireframe_shader, *_camera, *_point_cloud);
+            break;
+        case kColorMode:
+            RenderPointCloud(*_point_cloud_shader, *_camera, *_point_cloud);
+            break;
+    };
+
+    RenderImGuiPanel();
+
+	glfwSwapBuffers(_window);
+}
+
+void TDAGUI::RenderImGuiPanel() {
+    ImGui::Begin("Control Panel");
+
+    static const char* modes[] = {
+        "center select",
+        "global wireframe",
+        "local wireframe",
+        "color"
+    };
+
+    const char* combo_preview_value = modes[_cur_mode];  // Pass in the preview value visible before opening the combo (it could be anything)
+    if (ImGui::BeginCombo("Mode", combo_preview_value))
+    {
+        for (int n = 0; n < IM_ARRAYSIZE(modes); n++)
+        {
+            const bool is_selected = (_cur_mode == n);
+            if (ImGui::Selectable(modes[n], is_selected)) {
+                _cur_mode = n;
+            }
+
+            // Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
+            if (is_selected) {
+                ImGui::SetItemDefaultFocus();
+            }
+        }
+        ImGui::EndCombo();
+    }
+    if (ImGui::Button("Clear Color")) {
+        ClearColor();
     }
 
-    ImGui::Begin("Control Panel");
-    ImGui::Checkbox("wireframe mode", &_wire_frame_mode);
+    ImGui::End();
+
+    ImGui::Begin("Global Circular Coordinate");
+
 	ImGui::SliderFloat("threshold", &_threshold, 0, 2.5);
 	if (ImGui::Button("Compute Global")) {
 		ComputeGlobal();
 	}
+
+    ImGui::End();
+
+    ImGui::Begin("Local Circular Coordinate");
+
+	ImGui::SliderFloat("threshold", &_threshold, 0, 2.5);
+    ImGui::SliderFloat("center[0]", &_center(0), -1, 1);
+    ImGui::SliderFloat("center[1]", &_center(1), -1, 1);
+    ImGui::SliderFloat("center[2]", &_center(2), -1, 1);
+    ImGui::SliderFloat("radius", &_radius, 0, 3);
+    if (ImGui::Button("Compute Local")) {
+        ComputeLocal();
+    }
+
     ImGui::End();
 
 	ImGui::Render();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+}
 
-	glfwSwapBuffers(_window);
+void TDAGUI::ClearColor() {
+    _point_cloud->SetColors(_base_colors);
+}
+
+void TDAGUI::ComputeSelectedVertices() {
+    const int num_vertices = _vertices.rows();
+    Renderer::RowMajorMatrixX3f colors(num_vertices, 3);
+    Eigen::VectorXf distance = (_vertices.rowwise() - _center.transpose()).rowwise().norm();
+    for (int i = 0; i < num_vertices; i++) {
+        if (distance(i) < _radius + _threshold) {
+            colors.row(i) << 1, 0, 0;
+        } else {
+            colors.row(i) << 1, 1, 1;
+        }
+    }
+    _point_cloud->SetColors(colors);
 }
 
 void TDAGUI::ComputeGlobal() {
@@ -166,11 +287,17 @@ void TDAGUI::ComputeGlobal() {
         for (int i = 0; i < num_vertices; i++) {
             colors.row(i) = TDA::HSV2RGB(hues[i] - std::floor(hues[i]), 1.0, 1.0);
         }
+	    _point_cloud->SetColors(colors);
+    } else {
+        _point_cloud->SetColors(_base_colors);
     }
-	_point_cloud->SetColors(colors);
 }
 
-void TDAGUI::ComputeGraph() {
+void TDAGUI::ComputeLocal() {
+    // TODO:
+}
+
+void TDAGUI::ComputeGlobalGraph() {
 	std::vector<std::pair<unsigned int, unsigned int>> edges;
 	const int num_vertices = _vertices.rows();
     for (int i = 0; i < num_vertices; i++) {
