@@ -118,4 +118,78 @@ protected:
 };
 
 
+class HighDimGUI : public Renderer::GUI {
+public:
+	// call it before MainLoop
+	void PreCompute();
+
+    void SetCamera(
+		const glm::vec3& position,
+		const float rotz,
+		const float roty,
+        const float near,
+        const float far
+    );
+	void SetVertices(const Eigen::MatrixXd& vertices);
+	
+
+	void DisplayFunc() override;
+	void MouseButtonCallback(GLFWwindow *window, int button, int action, int mods) override;
+	void MouseMotionCallback(GLFWwindow *window, double x, double y) override;
+	void KeyboardCallback(GLFWwindow *window, int key, int scancode, int action, int mods) override;
+	void WindowSizeCallback(GLFWwindow *window, int width, int height) override;
+
+	void RenderSelectBox();
+    void RenderImGuiPanel();
+
+    void ClearAll();
+    void ComputeCenter();
+	void ComputeLocalVertices();
+	void ComputeGraph();
+	void ComputeCircularCoords();
+
+protected:
+	bool _left_down = false, _right_down = false, _middle_down = false;
+	bool _left_alt_down = false;
+    double _last_x, _last_y;
+	double _select_begin_x, _select_begin_y;
+
+    float _mouse_movement_sensitivity = 0.01f;
+    float _mouse_rotation_sensitivity = 0.1f;
+    float _mouse_zoom_sensitivity = 0.1f;
+
+	Camera* _camera = nullptr;
+	Renderer::Shader* _point_cloud_shader = nullptr;
+	Renderer::Shader* _wireframe_shader = nullptr;
+	Renderer::Shader* _backbuffer_shader = nullptr;
+
+	enum class HighDimGUIMode {
+		kCenterSelectMode = 0,
+		kRadiusSelectMode = 1,
+		kWireframeMode = 2,
+		kColorMode = 3
+	} _mode;
+
+	int _num_vertices;
+	Eigen::MatrixXd _vertices;
+
+	Renderer::RowMajorMatrixX3f _vertices_3d;
+	Renderer::RowMajorMatrixX3f _base_colors;
+
+    PointCloud* _point_cloud = nullptr;
+	GLuint _vertex_id_buffer = 0;
+	std::vector<unsigned int> _backbuffer_data;
+	Renderer::VertexArray* _vertex_select_array = nullptr;
+	std::vector<unsigned int> _vertex_ids;
+
+	float _threshold = 0;
+	
+	std::vector<unsigned int> _center_ids;
+    Eigen::VectorXd _center;
+    Eigen::VectorXd _last_center;
+    float _radius;
+    float _last_radius = 0;
+
+};
+
 }
