@@ -18,4 +18,5 @@ target_link_options(
 
 add_subdirectory(3rdParty)
 add_subdirectory(src)
+add_subdirectory(data)
 add_subdirectory(test)

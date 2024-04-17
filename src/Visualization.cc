@@ -2,6 +2,7 @@
 #include "CircularCoordinate.hpp"
 #include <filesystem>
 #include "DimensionReduction.hpp"
+#include "Render.hpp"
 #include "TDAConfig.hpp"
 #include "imgui.h"
 #include "imgui_impl_opengl3.h"
@@ -587,15 +588,44 @@ void HighDimGUI::DisplayFunc() {
     switch (_mode) {
         case HighDimGUIMode::kCenterSelectMode:
 			// TODO:
+            RenderPointCloud(
+                *_point_cloud_shader, 
+                *_camera,
+                *_point_cloud
+            );
+            glBindFramebuffer(GL_FRAMEBUFFER, _vertex_backbuffer);
+            Renderer::RenderUtility::RenderToVertexBackBuffer(
+                *_backbuffer_shader,
+                *_camera,
+                *_point_cloud->_va
+            );
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            if (_left_down && !_left_alt_down) {
+                RenderSelectBox();
+            }
             break;
         case HighDimGUIMode::kRadiusSelectMode:
-			// TODO:
+			ComputeLocalVertices();
+            RenderPointCloud(
+                *_point_cloud_shader,
+                *_camera,
+                *_point_cloud
+            );
             break;
         case HighDimGUIMode::kWireframeMode:
-			// TODO:
+            ComputeGraph();
+            RenderEdges(
+                *_wireframe_shader,
+                *_camera,
+                *_point_cloud
+            );
             break;
         case HighDimGUIMode::kColorMode:
-			// TODO:
+            RenderPointCloud(
+                *_point_cloud_shader,
+                *_camera,
+                *_point_cloud
+            );
             break;
     };
 
@@ -605,7 +635,32 @@ void HighDimGUI::DisplayFunc() {
 }
 
 void HighDimGUI::RenderSelectBox() {
-	// TODO:
+	float min_x = Normalize(std::min(_select_begin_x, _last_x), _width);
+	float max_x = Normalize(std::max(_select_begin_x, _last_x), _width);
+	float min_y = Normalize(std::min(_height - _select_begin_y, _height - _last_y), _height);
+	float max_y = Normalize(std::max(_height - _select_begin_y, _height - _last_y), _height);
+
+    glUseProgram(0);
+    static const float default_color[] = {1, 1, 1};
+    static const float color[] = {0.2, 0.3, 1, 0.4};
+    
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+
+    glColor4fv(color);
+
+    glBegin(GL_TRIANGLE_STRIP);
+    glVertex2f(min_x, min_y);
+    glVertex2f(min_x, max_y);
+    glVertex2f(max_x, min_y);
+    glVertex2f(max_x, max_y);
+    glEnd();
+
+    glColor3fv(default_color);
+    glPointSize(1);
 }
 
 void HighDimGUI::RenderImGuiPanel() {
@@ -687,7 +742,7 @@ void HighDimGUI::ComputeCenter() {
 	auto width = max_x - min_x;
 	auto height = max_y - min_y;
 
-	glBindFramebuffer(GL_FRAMEBUFFER, _vertex_id_buffer);
+	glBindFramebuffer(GL_FRAMEBUFFER, _vertex_backbuffer);
 
 	glReadPixels(
 		min_x, min_y,
@@ -822,6 +877,14 @@ void HighDimGUI::MouseButtonCallback(
                     break;
             }
             break;
+        }
+    }
+    if (_mode == HighDimGUIMode::kCenterSelectMode) {
+        if (PRESS(LEFT)) {
+            glfwGetCursorPos(window, &_select_begin_x, &_select_begin_y);
+        }
+        if (RELEASE(LEFT)) {
+            ComputeCenter();
         }
     }
 

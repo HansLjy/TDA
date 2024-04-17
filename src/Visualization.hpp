@@ -177,7 +177,9 @@ protected:
 	Renderer::RowMajorMatrixX3f _base_colors;
 
     PointCloud* _point_cloud = nullptr;
-	GLuint _vertex_id_buffer = 0;
+	GLuint _vertex_backbuffer = 0;
+	GLuint _vertex_backbuffer_color;
+	GLuint _vertex_backbuffer_depth;
 	std::vector<unsigned int> _backbuffer_data;
 	Renderer::VertexArray* _vertex_select_array = nullptr;
 	std::vector<unsigned int> _vertex_ids;
