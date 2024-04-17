@@ -20,9 +20,8 @@ namespace TDA {
 
 template<int dim>
 void PCA<dim>::Fit(const Eigen::MatrixXd &data) {
-	Eigen::JacobiSVD<Eigen::MatrixXd, Eigen::ComputeThinV> svd(data);
-	svd.computeV();
-	_weights = svd.matrixV().leftCols(dim);
+	Eigen::JacobiSVD<Eigen::MatrixXd> svd(data, Eigen::ComputeThinV);
+	_weights = svd.matrixV().leftCols<dim>();
 }
 
 template<int dim>

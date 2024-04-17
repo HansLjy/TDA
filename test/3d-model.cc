@@ -1,4 +1,3 @@
-#include "CircularCoordinate.hpp"
 #include "Visualization.hpp"
 #include "Utilities.hpp"
 #include "TestConfig.hpp"
@@ -11,7 +10,7 @@ int main(int argc, char* argv[]) {
     Renderer::RowMajorMatrixX2f uvs;
     Renderer::RowMajorMatrixX3u face_topo;
     Renderer::LoadObj(
-        fs::path(TDA_MODEL_DIR) / argv[1], vertices, uvs, face_topo
+        fs::path(LOW_DIM_MODEL_DIR) / argv[1], vertices, uvs, face_topo
     );
     
     Eigen::Vector3f coords_max = vertices.colwise().maxCoeff();

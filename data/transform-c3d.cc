@@ -24,10 +24,12 @@ void read_binary(std::ifstream &in, MatrixType &matrix) {
 }
 
 int main(int argc, char* argv[]) {
-    ezc3d::c3d data(fs::path(TEST_RAW_DATA_DIR) / argv[1]);
+    ezc3d::c3d data(fs::path(RAW_DATA_DIR) / argv[1]);
 
     const int num_frames = data.header().nbFrames();
     const int num_points = data.header().nb3dPoints();
+	std::cerr << "number of frames: " << num_frames << std::endl
+			  << "number of points: " << num_points << std::endl;
 
     Eigen::MatrixXd data_eigen(num_frames, num_points * 3);
     for (int frame_id = 0; frame_id < num_frames; frame_id++) {
@@ -37,6 +39,6 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    std::ofstream out_file(fs::path(TEST_DATA_DIR) / (std::string(argv[1]) + ".eig"));
+    std::ofstream out_file(fs::path(HIGH_DIM_MODEL_DIR) / (std::string(argv[1]) + ".eig"));
     write_binary(out_file, data_eigen);
 }

@@ -513,6 +513,48 @@ void HighDimGUI::PreCompute() {
 		fs::path(SHADER_DIR) / "vertex-select.vert",
 		fs::path(SHADER_DIR) / "vertex-select.frag"
 	);
+
+	glGenFramebuffers(1, &_vertex_backbuffer);
+	glBindFramebuffer(GL_FRAMEBUFFER, _vertex_backbuffer);
+
+	glGenTextures(1, &_vertex_backbuffer_color);
+	glBindTexture(GL_TEXTURE_2D, _vertex_backbuffer_color);
+	glTexImage2D(
+		GL_TEXTURE_2D,
+		0,
+		GL_R32UI,
+		_width,
+		_height,
+		0,
+		GL_RED_INTEGER,
+		GL_UNSIGNED_INT,
+		nullptr
+	);
+	glTexParameteri(
+		GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST
+	);
+	glTexParameteri(
+		GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST
+	);
+	glBindTexture(GL_TEXTURE_2D, 0);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _vertex_backbuffer_color, 0);
+
+	glGenRenderbuffers(1, &_vertex_backbuffer_depth);
+	glBindRenderbuffer(GL_RENDERBUFFER, _vertex_backbuffer_depth);
+	glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT32, _width, _height);
+	glBindRenderbuffer(GL_RENDERBUFFER, 0);
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, _vertex_backbuffer_depth);
+
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+		spdlog::error("Unable to initialize back buffer, error code: {}", glCheckFramebufferStatus(GL_FRAMEBUFFER));
+	}
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+	const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+	
+	_backbuffer_data.resize(mode->width * mode->height);
 }
 
 void HighDimGUI::SetVertices(const Eigen::MatrixXd &vertices) {
@@ -521,7 +563,7 @@ void HighDimGUI::SetVertices(const Eigen::MatrixXd &vertices) {
 	_vertices = vertices;
 	PCA<3> pca;
 	pca.Fit(vertices);
-	_vertices_3d = pca.Transform(vertices);
+	_vertices_3d = pca.Transform(vertices).cast<float>();
 
 	delete _point_cloud;
 	_point_cloud = TDA::PointCloud::GetPointCloud(_num_vertices, 0);
@@ -960,7 +1002,6 @@ void HighDimGUI::WindowSizeCallback(GLFWwindow *window, int width, int height) {
 	_width = width;
 	_height = height;
 	_camera->SetAspectRatio((float) width / height);
-	_backbuffer_data.resize(width * height);
 }
 
 

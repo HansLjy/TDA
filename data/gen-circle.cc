@@ -6,7 +6,7 @@
 namespace fs = std::filesystem;
 
 int main(int argc, char* argv[]) {
-	std::ofstream output(fs::path(TEST_DATA_DIR) / (std::string("gen_") + argv[1]));
+	std::ofstream output(fs::path(LOW_DIM_MODEL_DIR) / (std::string("gen_") + argv[1]));
 
 	int num_vertices = std::atoi(argv[2]);
 	double delta_theta = 2 * std::acos(-1) / num_vertices;

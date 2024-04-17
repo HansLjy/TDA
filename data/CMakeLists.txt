@@ -1,9 +1,11 @@
 cmake_minimum_required(VERSION 3.22)
 
-set(TEST_DATA_DIR ${CMAKE_CURRENT_SOURCE_DIR})
-cmake_path(APPEND TEST_DATA_DIR outputs)
-set(TEST_RAW_DATA_DIR ${CMAKE_CURRENT_SOURCE_DIR})
-cmake_path(APPEND TEST_RAW_DATA_DIR raw)
+set(3D_MODEL_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+cmake_path(APPEND 3D_MODEL_DIR 3d-models)
+set(HIGH_DIM_MODEL_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+cmake_path(APPEND HIGH_DIM_MODEL_DIR high-dim-models)
+set(RAW_DATA_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+cmake_path(APPEND RAW_DATA_DIR raw)
 configure_file(DataConfig.hpp.in DataConfig.hpp)
 
 include(FetchContent)

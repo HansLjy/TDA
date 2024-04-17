@@ -19,4 +19,7 @@ target_link_options(
 add_subdirectory(3rdParty)
 add_subdirectory(src)
 add_subdirectory(data)
+message("------------------------")
+message(STATUS ${3D_MODEL_DIR})
+message("------------------------")
 add_subdirectory(test)
