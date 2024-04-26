@@ -34,9 +34,7 @@ std::optional<std::vector<std::vector<double>>> TryWithPrime(
 ) {
     spdlog::info("Begin persistent cohomology calculation with prime {}", p);
     auto pc = GeneratePersistentCohomology<p>(filtration);
-    spdlog::info("Finish persistent cohomology calculation");
-    // std::cerr << "fuck: " << __FILE__ << ":" << __LINE__ << std::endl;
-    // std::cerr << pc << std::endl;
+    spdlog::info("Finish persistent cohomology calculation, order of cohomology group = {}", pc._I.size());
 
 	if (pc._bettis[1] == 0) {
 		spdlog::warn("H^1 is trivial for the threshold");

@@ -78,7 +78,7 @@ public:
 
     void RenderImGuiPanel();
 
-    void ClearColor();
+    void ClearAll();
 	void ComputeGlobal();
 	void ComputeLocal();
 	void ComputeGlobalGraph();
@@ -98,15 +98,18 @@ protected:
 	Renderer::Shader* _point_cloud_shader = nullptr;
 	Renderer::Shader* _wireframe_shader = nullptr;
 
-    static const int kCenterSelectMode = 0;
-    static const int kGlobalWireframeMode = 1;
-    static const int kLocalWireframeMode = 2;
-    static const int kColorMode = 3;
-
-    int _cur_mode = 0;
+	enum class TDAMode {
+		kLocalCenterSelectMode = 0,
+		kGlobalWireframeMode = 1,
+		kLocalWireframeMode = 2,
+		kColorMode = 3
+	} _mode;
 
 	Renderer::RowMajorMatrixX3f _vertices;
 	Renderer::RowMajorMatrixX3f _base_colors;
+	int _cur_color_id = 0;
+	int _last_color_id = 0;
+	std::vector<Renderer::RowMajorMatrixX3f> _computed_colors;
     PointCloud* _point_cloud = nullptr;
 	float _threshold = 0;
 	float _last_global_threshold = 0;

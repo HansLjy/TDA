@@ -169,8 +169,8 @@ void TDAGUI::DisplayFunc() {
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LESS);
 
-    switch (_cur_mode) {
-        case kCenterSelectMode:
+    switch (_mode) {
+        case TDAMode::kLocalCenterSelectMode:
             ComputeSelectedVertices();
             RenderPointCloud(
                 *_point_cloud_shader,
@@ -183,7 +183,7 @@ void TDAGUI::DisplayFunc() {
                 (Eigen::Vector3f() << 0, 0, 1).finished()
             );
             break;
-        case kLocalWireframeMode:
+        case TDAMode::kLocalWireframeMode:
             if (_threshold != _last_local_threshold || _radius != _last_radius || _center != _last_center) {
                 _last_global_threshold = _threshold;
                 _last_radius = _radius;
@@ -192,14 +192,18 @@ void TDAGUI::DisplayFunc() {
             }
             RenderEdges(*_wireframe_shader, *_camera, *_point_cloud);
             break;
-        case kGlobalWireframeMode:
+        case TDAMode::kGlobalWireframeMode:
             if (_threshold != _last_global_threshold) {
                 _last_global_threshold = _threshold;
                 ComputeGlobalGraph();
             }
             RenderEdges(*_wireframe_shader, *_camera, *_point_cloud);
             break;
-        case kColorMode:
+        case TDAMode::kColorMode:
+			if (_cur_color_id != _last_color_id) {
+				_last_color_id = _cur_color_id;
+				_point_cloud->SetColors(_computed_colors[_cur_color_id]);
+			}
             RenderPointCloud(*_point_cloud_shader, *_camera, *_point_cloud);
             break;
     };
@@ -219,14 +223,12 @@ void TDAGUI::RenderImGuiPanel() {
         "color"
     };
 
-    const char* combo_preview_value = modes[_cur_mode];
-    if (ImGui::BeginCombo("Mode", combo_preview_value))
-    {
-        for (int n = 0; n < IM_ARRAYSIZE(modes); n++)
-        {
-            const bool is_selected = (_cur_mode == n);
+    const char* combo_preview_value = modes[static_cast<int>(_mode)];
+    if (ImGui::BeginCombo("Mode", combo_preview_value)) {
+        for (int n = 0; n < IM_ARRAYSIZE(modes); n++) {
+            const bool is_selected = (static_cast<int>(_mode) == n);
             if (ImGui::Selectable(modes[n], is_selected)) {
-                _cur_mode = n;
+                _mode = TDAMode(n);
             }
 
             // Set the initial focus when opening the combo (scrolling + keyboard navigation focus)
@@ -236,39 +238,56 @@ void TDAGUI::RenderImGuiPanel() {
         }
         ImGui::EndCombo();
     }
-    if (ImGui::Button("Clear Color")) {
-        ClearColor();
+    if (ImGui::Button("Clear All")) {
+        ClearAll();
     }
-
     ImGui::End();
 
-    ImGui::Begin("Global Circular Coordinate");
+	switch (_mode) {
+		case TDAMode::kLocalCenterSelectMode:
+			ImGui::Begin("Local Center Select Mode");
+			ImGui::SliderFloat("threshold", &_threshold, 0, 2.5);
+			ImGui::SliderFloat("center[0]", &_center(0), -1, 1);
+			ImGui::SliderFloat("center[1]", &_center(1), -1, 1);
+			ImGui::SliderFloat("center[2]", &_center(2), -1, 1);
+			ImGui::SliderFloat("radius", &_radius, 0, 3);
+			ImGui::End();
+			break;
 
-	ImGui::SliderFloat("threshold", &_threshold, 0, 2.5);
-	if (ImGui::Button("Compute Global")) {
-		ComputeGlobal();
+		case TDAMode::kGlobalWireframeMode:
+			ImGui::Begin("Global Wireframe Mode");
+			ImGui::SliderFloat("threshold", &_threshold, 0, 2.5);
+			if (ImGui::Button("Compute Global")) {
+				ComputeGlobal();
+			}
+		    ImGui::End();
+			break;
+
+		case TDAMode::kLocalWireframeMode:
+			ImGui::Begin("Local Wireframe Mode");
+			ImGui::SliderFloat("threshold", &_threshold, 0, 2.5);
+			if (ImGui::Button("Compute Local")) {
+				ComputeLocal();
+			}
+			ImGui::End();
+			break;
+		
+		case TDAMode::kColorMode:
+			ImGui::Begin("Color");
+			if (_computed_colors.empty()) {
+				ImGui::Text("The homotopy group is trivial!");
+			} else {
+				ImGui::SliderInt("Homotopy class", &_cur_color_id, 0, _computed_colors.size() - 1);
+			}
+			ImGui::End();
+			break;
 	}
-
-    ImGui::End();
-
-    ImGui::Begin("Local Circular Coordinate");
-
-	ImGui::SliderFloat("threshold", &_threshold, 0, 2.5);
-    ImGui::SliderFloat("center[0]", &_center(0), -1, 1);
-    ImGui::SliderFloat("center[1]", &_center(1), -1, 1);
-    ImGui::SliderFloat("center[2]", &_center(2), -1, 1);
-    ImGui::SliderFloat("radius", &_radius, 0, 3);
-    if (ImGui::Button("Compute Local")) {
-        ComputeLocal();
-    }
-
-    ImGui::End();
 
 	ImGui::Render();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
-void TDAGUI::ClearColor() {
+void TDAGUI::ClearAll() {
     _point_cloud->SetColors(_base_colors);
 }
 
@@ -291,13 +310,19 @@ void TDAGUI::ComputeGlobal() {
 		_vertices.cast<double>(), _threshold
 	);
 	const int num_vertices = _vertices.rows();
-	Renderer::RowMajorMatrixX3f colors(num_vertices, 3);
+
+	_computed_colors.clear();
 	if (circular_coords.has_value()) {
-        auto& hues = circular_coords.value()[0];
-        for (int i = 0; i < num_vertices; i++) {
-            colors.row(i) = TDA::HSV2RGB(hues[i] - std::floor(hues[i]), 1.0, 1.0);
-        }
-	    _point_cloud->SetColors(colors);
+		for (const auto& hues : circular_coords.value()) {
+			Renderer::RowMajorMatrixX3f colors(num_vertices, 3);
+			for (int i = 0; i < num_vertices; i++) {
+				colors.row(i) = TDA::HSV2RGB(hues[i] - std::floor(hues[i]), 1.0, 1.0);
+			}
+			_computed_colors.push_back(colors);
+		}
+		_cur_color_id = 0;
+		_last_color_id = 0;
+	    _point_cloud->SetColors(_computed_colors[0]);
     } else {
         _point_cloud->SetColors(_base_colors);
     }
@@ -312,22 +337,28 @@ void TDAGUI::ComputeLocal() {
     );
     if (result.has_value()) {
 	    const int num_vertices = _vertices.rows();
-        Renderer::RowMajorMatrixX3f colors(num_vertices, 3);
         auto& [local_vertex_ids, circular_coords] = result.value();
-        auto& hues = circular_coords[0];
-        int local_id = 0;
-        for (int i = 0; i < num_vertices; i++) {
-            if (i == local_vertex_ids[local_id]) {
-                colors.row(i) = TDA::HSV2RGB(
-                    hues[local_id + 1] - std::floor(hues[local_id + 1]),
-                    1.0, 1.0
-                );
-                local_id++;
-            } else {
-                colors.row(i) << 1, 1, 1;
-            }
-        }
-        _point_cloud->SetColors(colors);
+
+		_computed_colors.clear();
+		for (const auto& hues : circular_coords) {
+        	Renderer::RowMajorMatrixX3f colors(num_vertices, 3);
+			int local_id = 0;
+			for (int i = 0; i < num_vertices; i++) {
+				if (i == local_vertex_ids[local_id]) {
+					colors.row(i) = TDA::HSV2RGB(
+						hues[local_id + 1] - std::floor(hues[local_id + 1]),
+						1.0, 1.0
+					);
+					local_id++;
+				} else {
+					colors.row(i) << 1, 1, 1;
+				}
+			}
+			_computed_colors.push_back(colors);
+		}
+		_cur_color_id = 0;
+		_last_color_id = 0;
+        _point_cloud->SetColors(_computed_colors[0]);
     } else {
         _point_cloud->SetColors(_base_colors);
     }

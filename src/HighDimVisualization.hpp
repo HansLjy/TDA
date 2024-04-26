@@ -76,6 +76,10 @@ protected:
 	Renderer::RowMajorMatrixX3f _vertices_3d;
 	Renderer::RowMajorMatrixX3f _base_colors;
 
+	int _cur_color_id = 0;
+	int _last_color_id = 0;
+	std::vector<Renderer::RowMajorMatrixX3f> _computed_colors;
+
     PointCloud* _point_cloud = nullptr;
 	GLuint _vertex_backbuffer = 0;
 	GLuint _vertex_backbuffer_color;
@@ -84,12 +88,13 @@ protected:
 	Renderer::VertexArray* _vertex_select_array = nullptr;
 
 	float _threshold = 0;
+	float _last_threshold = 0;
 	
 	std::vector<unsigned int> _center_ids;
     Eigen::VectorXd _center;
 	Eigen::Vector3f _center_3d;
     Eigen::VectorXd _last_center;
-    float _radius;
+    float _radius = 0;
     float _last_radius = 0;
 
 };
@@ -160,6 +165,14 @@ void HighDimGUI<dim>::SetVertices(const Eigen::MatrixXd &vertices) {
 	PCA<3> pca;
 	pca.Fit(vertices);
 	_vertices_3d = pca.Transform(vertices).cast<float>();
+
+    Eigen::Vector3f coords_max = _vertices_3d.colwise().maxCoeff();
+    Eigen::Vector3f coords_min = _vertices_3d.colwise().minCoeff();
+    Eigen::Vector3f center = (coords_max + coords_min) / 2;
+    float max_gap = (coords_max - coords_min).maxCoeff();
+
+    _vertices_3d.rowwise() -= center.transpose();
+    _vertices_3d *= float(2.0 / max_gap);
 
 	delete _point_cloud;
 	_point_cloud = TDA::PointCloud::GetPointCloud(_num_vertices, 0);
@@ -258,7 +271,17 @@ void HighDimGUI<dim>::DisplayFunc() {
             break;
 		}
         case HighDimGUIMode::kRadiusSelectMode: {
-			ComputeLocalVertices();
+			if (_radius != _last_radius) {
+				_last_radius = _radius;
+				ComputeLocalVertices();
+			}
+			if (!_center_ids.empty()) {
+				RenderPoint(
+					*_camera,
+					_center_3d,
+					(Eigen::Vector3f() << 0, 0, 1.0).finished()
+				);
+			}
             RenderPointCloud(
                 *_point_cloud_shader,
                 *_camera,
@@ -267,8 +290,8 @@ void HighDimGUI<dim>::DisplayFunc() {
             break;
 		}
         case HighDimGUIMode::kWireframeMode: {
-			if (_radius != _last_radius) {
-				_last_radius = _radius;
+			if (_threshold != _last_threshold) {
+				_last_threshold = _threshold;
             	ComputeGraph();
 			}
             RenderEdges(
@@ -279,6 +302,11 @@ void HighDimGUI<dim>::DisplayFunc() {
             break;
 		}
         case HighDimGUIMode::kColorMode: {
+			if (_cur_color_id != _last_color_id) {
+				_last_color_id = _cur_color_id;
+				_point_cloud->SetColors(_computed_colors[_cur_color_id]);
+			}
+
             RenderPointCloud(
                 *_point_cloud_shader,
                 *_camera,
@@ -376,7 +404,10 @@ void HighDimGUI<dim>::RenderImGuiPanel() {
 			ImGui::SliderFloat("threshold", &_threshold, 0, 2.5);
 			ImGui::End();
 			break;
-		default:
+		case HighDimGUIMode::kColorMode:
+			ImGui::Begin("Homotopy Class Select");
+			ImGui::SliderInt("Homotopy Class", &_cur_color_id, 0, _computed_colors.size() - 1);
+			ImGui::End();
 			break;
 	}
 
@@ -389,6 +420,8 @@ void HighDimGUI<dim>::ClearAll() {
     _point_cloud->SetColors(_base_colors);
 	_center_ids.clear();
 	_threshold = 0;
+	_last_threshold = 0;
+	_radius = 0;
 	_last_radius = 0;
 }
 
@@ -485,22 +518,27 @@ void HighDimGUI<dim>::ComputeCircularCoords() {
 
     if (result.has_value()) {
 	    const int num_vertices = _vertices.rows();
-        Renderer::RowMajorMatrixX3f colors(num_vertices, 3);
         auto& [local_vertex_ids, circular_coords] = result.value();
-        auto& hues = circular_coords[0];
-        int local_id = 0;
-        for (int i = 0; i < num_vertices; i++) {
-            if (i == local_vertex_ids[local_id]) {
-                colors.row(i) = TDA::HSV2RGB(
-                    hues[local_id + 1] - std::floor(hues[local_id + 1]),
-                    1.0, 1.0
-                );
-                local_id++;
-            } else {
-                colors.row(i) << 1, 1, 1;
-            }
-        }
-        _point_cloud->SetColors(colors);
+		_computed_colors.clear();
+		for (auto& hues : circular_coords) {
+        	Renderer::RowMajorMatrixX3f colors(num_vertices, 3);
+			int local_id = 0;
+			for (int i = 0; i < num_vertices; i++) {
+				if (i == local_vertex_ids[local_id]) {
+					colors.row(i) = TDA::HSV2RGB(
+						hues[local_id + 1] - std::floor(hues[local_id + 1]),
+						1.0, 1.0
+					);
+					local_id++;
+				} else {
+					colors.row(i) << 1, 1, 1;
+				}
+			}
+			_computed_colors.push_back(colors);
+		}
+		_cur_color_id = 0;
+		_last_color_id = 0;
+        _point_cloud->SetColors(_computed_colors[0]);
     } else {
 		spdlog::warn("No valid circular coordinates");
         _point_cloud->SetColors(_base_colors);
