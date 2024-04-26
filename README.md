@@ -12,7 +12,7 @@ On the root of this project:
 ```shell
 mkdir build
 cd build
-cmake .. -DCMAKE_BUILD_TYPE=Release
+cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=True
 make
 ```
 
@@ -32,13 +32,16 @@ A short notice on how the dependencies are used:
 
 ## Run
 
-On the root of the `build` directory:
+Below are two examples for visualizing 3d models and high-dimensional models respectively.
+
+For 3d models: On the root of the `build` directory:
 
 ```shell
 ./test/3d-model torus.obj
 ```
 
-## TODO
+For higher dimensional models: On the root of the `build` directory:
 
-- [ ] Detailed documentation on the GUI
-- [ ] Extend to high dimensional data
+```shell
+./test/high-dim-model B17.c3d.eig
+```
