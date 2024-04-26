@@ -1,6 +1,7 @@
 #include "Eigen/Dense"
 #include "ezc3d_all.h"
 #include "DataConfig.hpp"
+#include <set>
 #include <filesystem>
 #include <fstream>
 
@@ -31,11 +32,29 @@ int main(int argc, char* argv[]) {
 	std::cerr << "number of frames: " << num_frames << std::endl
 			  << "number of points: " << num_points << std::endl;
 
-    Eigen::MatrixXd data_eigen(num_frames, num_points * 3);
+
+	std::set<int> unusable_point_ids;
     for (int frame_id = 0; frame_id < num_frames; frame_id++) {
         for (int point_id = 0; point_id < num_points; point_id++) {
+
             auto pt = data.data().frames()[frame_id].points().point(point_id);
-            data_eigen.block<1, 3>(frame_id, point_id * 3) << pt.x(), pt.y(), pt.z();
+			if (std::isnan(pt.x())) {
+				unusable_point_ids.insert(point_id);
+			}
+        }
+    }
+	std::cerr << unusable_point_ids.size() << std::endl;
+
+    Eigen::MatrixXd data_eigen(num_frames, (num_points - unusable_point_ids.size()) * 3);
+	for (int frame_id = 0; frame_id < num_frames; frame_id++) {
+        for (int point_id = 0; point_id < num_points; point_id++) {
+
+            auto pt = data.data().frames()[frame_id].points().point(point_id);
+			if (!std::isnan(pt.x())) {
+				auto diff_id = std::distance(unusable_point_ids.begin(), unusable_point_ids.lower_bound(point_id));
+				data_eigen.block<1, 3>(frame_id, (point_id - diff_id) * 3)
+					<< pt.x(), pt.y(), pt.z();
+			}
         }
     }
 

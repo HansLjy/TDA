@@ -1,4 +1,4 @@
-#include "Visualization.hpp"
+#include "HighDimVisualization.hpp"
 #include "Utilities.hpp"
 #include "TestConfig.hpp"
 #include <filesystem>
@@ -28,7 +28,7 @@ int main(int argc, char* argv[]) {
     vertices.rowwise() -= center.transpose();
     vertices *= float(2.0 / max_gap);
 
-    auto gui = new TDA::HighDimGUI();
+    auto gui = new TDA::HighDimGUI<96>();
     Renderer::GUI::RegisterGlobalGUI(gui);
 
 	gui->Initialize();
