@@ -35,8 +35,8 @@ int main(int argc, char* argv[]) {
 	gui->SetVertices(vertices);
 
     gui->SetCamera(
-        glm::vec3(2.0f, 0.0f, 0.0f),
-        0.0f, 0.0f,
+        glm::vec3(0.0f, -2.0f, 0.0f),
+        -90.0f, 0.0f,
         0.1f, 100.0f
     );
     

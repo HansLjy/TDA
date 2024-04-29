@@ -28,7 +28,7 @@ int main(int argc, char* argv[]) {
     vertices.rowwise() -= center.transpose();
     vertices *= float(2.0 / max_gap);
 
-    auto gui = new TDA::HighDimGUI<96>();
+    auto gui = new TDA::HighDimGUI<20>();
     Renderer::GUI::RegisterGlobalGUI(gui);
 
 	gui->Initialize();

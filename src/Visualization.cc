@@ -112,8 +112,10 @@ void RenderPointCloud(
     const PointCloud& point_cloud
 ) {
     shader.Use();
+	glPointSize(5);
     shader["mvp"] = camera.GetProjectionMatrix() * camera.GetViewMatrix();
     point_cloud._va->DrawPoints();
+	glPointSize(1);
 }
 
 void RenderEdges(

@@ -32,6 +32,10 @@ message("-- ezc3d download success")
 add_executable(gen-circle gen-circle.cc)
 target_include_directories(gen-circle PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
+add_executable(gen-crossing gen-crossing.cc)
+target_include_directories(gen-crossing PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+target_link_libraries(gen-crossing Eigen3::Eigen)
+
 find_package(Eigen3 3.4.0 REQUIRED)
 add_executable(transform-c3d transform-c3d.cc)
 target_include_directories(transform-c3d PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
