@@ -45,7 +45,9 @@ int main(int argc, char* argv[]) {
     }
 	std::cerr << unusable_point_ids.size() << std::endl;
 
-    Eigen::MatrixXd data_eigen(num_frames, (num_points - unusable_point_ids.size()) * 3);
+	const int num_usable_points = num_points - unusable_point_ids.size();
+
+    Eigen::MatrixXd data_eigen(num_frames, num_usable_points * 3);
 	for (int frame_id = 0; frame_id < num_frames; frame_id++) {
         for (int point_id = 0; point_id < num_points; point_id++) {
 
@@ -57,6 +59,17 @@ int main(int argc, char* argv[]) {
 			}
         }
     }
+
+	for (int frame_id = 0; frame_id < num_frames; frame_id++) {
+		Eigen::Vector3d center = Eigen::Vector3d::Zero();
+		for (int usable_point_id = 0; usable_point_id < num_usable_points; usable_point_id++) {
+			center += data_eigen.block<1, 3>(frame_id, usable_point_id * 3);
+		}
+		center /= num_usable_points;
+		for (int usable_point_id = 0; usable_point_id < num_usable_points; usable_point_id++) {
+			data_eigen.block<1, 3>(frame_id, usable_point_id * 3) -= center.transpose();
+		}
+	}
 
     std::ofstream out_file(fs::path(HIGH_DIM_MODEL_DIR) / (std::string(argv[1]) + ".eig"));
     write_binary(out_file, data_eigen);
